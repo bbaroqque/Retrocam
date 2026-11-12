@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Retrocam</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Retrocam">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#16181b">
+<style>
+:root{color-scheme:dark;--bg:#16181b;--body:#23262b;--line:#353941;--silver:#cfd3d9;--mute:#8b9098;--amber:#ffa31a;--rec:#ff3b30;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--silver);font:14px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+#app{height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto}
+header{display:flex;align-items:center;gap:6px;padding:8px 10px}
+header h1{font-size:16px;margin:0 auto 0 2px;letter-spacing:.02em}
+.pill{border:1px solid var(--line);background:var(--body);border-radius:999px;padding:7px 12px}
+.pill.on{border-color:var(--amber);color:var(--amber)}
+.vf{flex:1;min-height:0;position:relative;background:#000;border-radius:14px;margin:0 10px;overflow:hidden;display:grid;place-items:center}
+#out{max-width:100%;max-height:100%}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+#timer{position:absolute;top:10px;left:12px;color:#fff;font:600 13px "Courier New",monospace;display:none;align-items:center;gap:6px;background:#0008;padding:3px 8px;border-radius:6px}
+#timer::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--rec)}
+#msg{position:absolute;inset:0;display:none;place-content:center;text-align:center;padding:24px;gap:10px;background:#000c}
+#msg button{justify-self:center}
+.strip{display:flex;gap:8px;overflow-x:auto;padding:10px;scrollbar-width:none}
+.p{flex:none;padding:8px 12px;border-radius:10px;background:var(--body);border:1px solid var(--line);text-align:left}
+.p b{display:block;font-size:13px;font-weight:600}
+.p small{color:var(--mute);font-size:11px}
+.p.on{border-color:var(--amber)}
+.ctl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:2px 18px 14px}
+.th{width:54px;height:54px;border-radius:12px;border:2px solid var(--line);background:var(--body) center/cover;overflow:hidden;padding:0}
+.th video,.th img{width:100%;height:100%;object-fit:cover;display:block}
+.sh{width:76px;height:76px;border-radius:50%;border:4px solid var(--silver);background:none;padding:5px}
+.sh i{display:block;width:100%;height:100%;border-radius:50%;background:var(--silver);transition:.15s}
+.vid .sh i{background:var(--rec)}
+.rec .sh i{border-radius:10px;transform:scale(.55)}
+.mode{justify-self:end;display:flex;flex-direction:column;gap:6px}
+.mode .pill{padding:6px 14px}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:#1d2024;border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .22s;z-index:5;max-height:70%;overflow:auto}
+.sheet.open{transform:none}
+.sheet h2{font-size:14px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center}
+.sl{display:grid;grid-template-columns:92px 1fr 36px;align-items:center;gap:8px;margin:7px 0;color:var(--mute)}
+.sl output{text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--amber)}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+#gal{position:fixed;inset:0;background:var(--bg);z-index:8;display:none;flex-direction:column;max-width:560px;margin:0 auto;padding-top:env(safe-area-inset-top,0px)}
+#gal.open{display:flex}
+.grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:3px;align-content:start}
+.grid button{aspect-ratio:1;padding:0;border:0;background:#000;position:relative}
+.grid img,.grid video{width:100%;height:100%;object-fit:cover}
+.grid span{position:absolute;right:4px;bottom:4px;background:#000a;border-radius:4px;padding:1px 5px;font-size:11px}
+.empty{grid-column:1/-1;text-align:center;color:var(--mute);padding:40px 20px}
+#view{position:fixed;inset:0;background:#000;z-index:9;display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+#view.open{display:flex}
+#view .m{flex:1;min-height:0;display:grid;place-items:center}
+#view .m img,#view .m video{max-width:100%;max-height:100%}
+#view .row{padding:12px;justify-content:center;margin:0 0 env(safe-area-inset-bottom,0px)}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 56px);transform:translate(-50%,-20px);background:var(--body);border:1px solid var(--line);border-radius:12px;padding:8px 8px 8px 14px;display:flex;gap:10px;align-items:center;opacity:0;pointer-events:none;transition:.25s;z-index:10}
+#toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.tx{flex:1;min-width:140px;border:1px solid var(--line);background:var(--body);color:var(--silver);border-radius:999px;padding:7px 12px;font:inherit}
+.pri{background:var(--amber);color:#1b1200;border-color:var(--amber);font-weight:600}
+</style></head><body>
+<div id="app">
+<header>
+ <h1>Retrocam</h1>
+ <button class="pill" id="bImp">Editar foto</button>
+ <button class="pill" id="bFlip">Voltear</button>
+ <button class="pill" id="bAdj">Ajustes</button>
+</header>
+<div class="vf">
+ <canvas id="out"></canvas><div id="flash"></div><div id="timer">00:00</div>
+ <div id="msg"><div id="msgT"></div><button class="pill pri" id="bRetry">Activar cámara</button></div>
+</div>
+<div class="strip" id="strip"></div>
+<div class="ctl" id="ctl">
+ <button class="th" id="bGal" aria-label="Galería"></button>
+ <button class="sh" id="bShot" aria-label="Disparar"><i></i></button>
+ <div class="mode"><button class="pill on" id="mP">Foto</button><button class="pill" id="mV">Vídeo</button></div>
+</div>
+</div>
+
+<div class="sheet" id="adj">
+ <h2>Ajustes <button class="pill" id="bAdjX">Cerrar</button></h2>
+ <div id="sls"></div>
+ <div class="row"><button class="pill" id="bStamp">Sello: fecha</button><button class="pill" id="bReset">Restablecer cámara</button></div>
+ <h2 style="margin-top:16px">Añadir cámaras</h2>
+ <div class="row" style="margin-top:0"><input class="tx" id="cname" maxlength="24" placeholder="Nombre de la nueva cámara"><button class="pill pri" id="bSaveCam">Guardar ajustes como cámara</button></div>
+ <div class="row"><button class="pill" id="bImpCam">Importar cámaras (.json)</button><button class="pill" id="bExpCam">Exportar cámaras</button><button class="pill" id="bDelCam">Eliminar esta cámara</button></div>
+ <input type="file" id="jfile" accept=".json,application/json" hidden>
+</div>
+
+<div id="gal">
+ <header><h1>Galería</h1><button class="pill" id="bGalX">Cerrar</button></header>
+ <div class="grid" id="grid"></div>
+</div>
+<div id="view"><div class="m" id="vm"></div>
+ <div class="row"><button class="pill pri" id="vSave">Guardar en el móvil</button><button class="pill" id="vShare">Compartir</button><button class="pill" id="vDel">Eliminar</button><button class="pill" id="vX">Cerrar</button></div>
+</div>
+<div id="toast"><span id="toastT"></span><button class="pill pri" id="toastB">Guardar</button></div>
+<input type="file" id="file" accept="image/*" hidden>
+<video id="vid" playsinline muted autoplay hidden></video>
+
+<script>
+const $=s=>document.getElementById(s);
+const K=['exp','con','sat','tmp','tin','fade','grain','vig','bloom','ca','scan','pix'];
+const L={exp:['Exposición',-1,1],con:['Contraste',.6,1.6],sat:['Saturación',0,2],tmp:['Temperatura',-1,1],tin:['Tinte',-1,1],fade:['Desvanecido',0,1],grain:['Grano / ruido',0,1],vig:['Viñeta',0,1],bloom:['Brillo suave',0,1],ca:['Aberr. cromática',0,1],scan:['Líneas de vídeo',0,1],pix:['Baja resolución',0,1]};
+//            exp  con  sat  tmp  tin  fade grain vig bloom ca  scan pix  sello
+const P=[
+['Original','Sin efecto',[0,1,1,0,0,0,0,0,0,0,0,0,0]],
+['IXUS CCD','Canon 2007',[.1,1.15,1.25,-.15,0,.1,.15,.2,.25,.15,0,.1,1]],
+['Cyber-shot','Sony flash',[.25,1.1,1.1,-.3,0,.05,.2,.15,.5,.1,0,.15,1]],
+['Cyber-shot DSC','Sony 2010 (tus fotos)',[0,1.2,1.45,-.05,.15,0,.35,.3,.15,.2,0,.1,0]],
+['DSC poca luz','Sony 2010 noche',[-.1,1.15,1.5,-.2,.1,0,.55,.35,.2,.2,0,.3,0]],
+['DSC viñeta','Sony efecto toy',[.1,1.1,1.2,-.1,.1,.15,.3,.8,.3,.3,0,.2,0]],
+['DSC retro','Sony desvanecida',[-.1,.9,.65,.25,-.2,.5,.35,.5,.25,.3,0,.25,0]],
+['Coolpix','Nikon cálida',[.05,1.05,1.3,.35,.1,.12,.2,.25,.2,.1,0,.15,1]],
+['FinePix','Fuji verdosa',[0,1.2,1.35,-.05,-.35,.1,.25,.3,.15,.2,0,.1,1]],
+['Exilim','Casio vivo',[.15,1.25,1.5,.1,.15,.05,.12,.15,.3,.1,0,.1,1]],
+['EasyShare','Kodak 2003',[.05,1,1.4,.45,0,.2,.3,.35,.25,.2,0,.25,1]],
+['Lumix FX','Panasonic frío',[0,1.1,.95,-.4,.1,.15,.35,.2,.1,.15,0,.3,1]],
+['Handycam','Hi8 cinta',[.1,.95,.8,.2,0,.3,.55,.35,.4,.6,.6,.6,2]],
+['DCR-TRV900','Sony 3CCD vivo',[.05,1.15,1.3,-.1,0,.05,.2,.2,.2,.2,.25,.3,2]],
+['DCR-TRV27','Sony MiniDV',[.1,1.05,1.1,.1,0,.12,.3,.3,.3,.3,.35,.4,2]],
+['DCR-PC120','Sony MiniDV',[.1,1.1,1.2,-.05,.05,.1,.25,.25,.25,.25,.3,.35,2]],
+['DCR-HC','Sony MiniDV',[.05,1.1,1.15,0,0,.08,.2,.2,.2,.2,.2,.25,2]],
+['DCR-DVD','Sony DVD',[.15,1,.95,.1,-.05,.15,.35,.3,.35,.35,.1,.5,2]],
+['DCR-TRV Digital8','Sony D8 cinta',[.1,1.05,1,.25,0,.2,.45,.35,.35,.45,.45,.5,2]],
+['Desechable','Flash y carrete',[.2,1.3,1.2,.5,-.1,.3,.7,.55,.35,.3,0,.1,1]],
+['Mono Y2K','Blanco y negro',[0,1.3,0,0,0,.15,.5,.4,.2,.1,0,.2,0]]];
+const vals={};let pi=1,st=1,facing='environment',mode='photo',stream=null,src=null,rec=null;
+
+const VS='attribute vec2 p;varying vec2 v;void main(){v=p*.5+.5;gl_Position=vec4(p,0.,1.);}';
+const FS=`precision mediump float;varying vec2 v;uniform sampler2D t;uniform vec2 R;uniform float T,mir,${K.map(k=>'u_'+k).join(',')};
+float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233))+T)*43758.5453);}
+vec3 S(vec2 u){return texture2D(t,u).rgb;}
+void main(){vec2 u=v;if(mir>.5)u.x=1.-u.x;
+if(u_pix>0.){vec2 g=R/(1.+u_pix*6.);u=(floor(u*g)+.5)/g;}
+vec2 d=v-.5;vec3 c;c.r=S(u+d*u_ca*.02).r;c.g=S(u).g;c.b=S(u-d*u_ca*.02).b;
+if(u_bloom>0.){vec3 b=vec3(0.);for(int i=0;i<8;i++){float a=float(i)*.785;b+=S(u+vec2(cos(a),sin(a))*.012);}b/=8.;c+=max(b-.55,0.)*u_bloom*1.5;c=mix(c,b,u_bloom*.2);}
+c*=pow(2.,u_exp);c.r+=u_tmp*.1;c.b-=u_tmp*.1;c.g-=u_tin*.08;
+float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,u_sat);c=(c-.5)*u_con+.5;
+c=c*(1.-u_fade*.25)+u_fade*.12;c*=1.-u_vig*smoothstep(.3,.9,length(d)*1.4);
+c+=(h(v*R)-.5)*u_grain*.25;c*=1.-u_scan*.25*step(.5,fract(v.y*R.y*.5));
+gl_FragColor=vec4(clamp(c,0.,1.),1.);}`;
+const glc=document.createElement('canvas'),out=$('out'),x=out.getContext('2d');
+const gl=glc.getContext('webgl',{preserveDrawingBuffer:true});
+let loc={};
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o}
+if(gl){const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(pr);gl.useProgram(pr);
+ const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+ const a=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+ ['R','T','mir',...K.map(k=>'u_'+k)].forEach(n=>loc[n]=gl.getUniformLocation(pr,n));
+ gl.bindTexture(gl.TEXTURE_2D,gl.createTexture());
+ [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]].forEach(q=>gl.texParameteri(gl.TEXTURE_2D,q[0],q[1]));
+ gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);}
+
+function frame(t){requestAnimationFrame(frame);
+ if(!gl||!src)return;const s=src;let w=s.videoWidth||s.naturalWidth,h=s.videoHeight||s.naturalHeight;
+ if(!w||!h||(s===vid&&vid.readyState<2))return;
+ const k=Math.min(1,1920/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+ if(glc.width!==w||glc.height!==h){glc.width=out.width=w;glc.height=out.height=h;gl.viewport(0,0,w,h);}
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,s);
+ gl.uniform2f(loc.R,w,h);gl.uniform1f(loc.T,(t%1000)/1000);gl.uniform1f(loc.mir,s===vid&&facing==='user'?1:0);
+ K.forEach(q=>gl.uniform1f(loc['u_'+q],vals[q]));
+ gl.drawArrays(gl.TRIANGLE_STRIP,0,4);x.drawImage(glc,0,0);stamp();}
+function stamp(){if(!st)return;const w=out.width,h=out.height,f=Math.round(Math.min(w,h)*.045),d=new Date(),p=n=>String(n).padStart(2,'0');
+ x.font=`bold ${f}px "Courier New",monospace`;x.textBaseline='bottom';x.shadowColor='rgba(255,120,0,.8)';x.shadowBlur=f*.3;
+ if(st===1){x.fillStyle='#ff9a1f';x.textAlign='right';x.fillText(`’${String(d.getFullYear()).slice(2)} ${d.getMonth()+1} ${d.getDate()}`,w-f,h-f);}
+ else{x.fillStyle='#fff';x.textAlign='left';x.fillText(`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`,f,h-f);x.textAlign='right';x.fillText(`${d.getFullYear()}.${p(d.getMonth()+1)}.${p(d.getDate())}`,w-f,h-f);
+  if(rec&&d.getSeconds()%2===0){x.fillStyle='#ff3b30';x.textAlign='left';x.fillText('● REC',f,f*2.4);}}
+ x.shadowBlur=0;}
+
+/* ---------- UI de ajustes y presets ---------- */
+const vid=$('vid');
+const STN=['Sello: ninguno','Sello: fecha','Sello: camcorder'];
+function setPreset(i){pi=i;const a=P[i][2];K.forEach((k,j)=>vals[k]=a[j]);st=a[12];syncUI();}
+function syncUI(){document.querySelectorAll('.p').forEach((b,i)=>b.classList.toggle('on',i===pi));
+ K.forEach(k=>{$('s_'+k).value=vals[k];$('o_'+k).textContent=(+vals[k]).toFixed(2).replace(/\.?0+$/,'')||'0';});$('bStamp').textContent=STN[st];}
+const NB=P.length;
+function addBtn(p,i){const b=document.createElement('button');b.className='p';b.innerHTML='<b></b><small></small>';b.firstChild.textContent=p[0];b.lastChild.textContent=p[1];b.onclick=()=>setPreset(i);$('strip').appendChild(b);}
+P.forEach(addBtn);
+K.forEach(k=>{const[l,mn,mx]=L[k],d=document.createElement('label');d.className='sl';
+ d.innerHTML=`<span>${l}</span><input type="range" id="s_${k}" min="${mn}" max="${mx}" step=".01"><output id="o_${k}"></output>`;$('sls').appendChild(d);
+ d.querySelector('input').oninput=e=>{vals[k]=+e.target.value;$('o_'+k).textContent=(+e.target.value).toFixed(2).replace(/\.?0+$/,'')||'0';};});
+$('bStamp').onclick=()=>{st=(st+1)%3;$('bStamp').textContent=STN[st];};
+$('bReset').onclick=()=>setPreset(pi);
+$('bAdj').onclick=()=>$('adj').classList.add('open');$('bAdjX').onclick=()=>$('adj').classList.remove('open');
+
+/* ---------- cámara ---------- */
+function msg(t,btn){$('msg').style.display=t?'grid':'none';$('msgT').textContent=t||'';$('bRetry').style.display=btn?'':'none';}
+async function start(){if(stream)stream.getTracks().forEach(t=>t.stop());
+ try{if(!navigator.mediaDevices)throw 0;const v={facingMode:facing,width:{ideal:1920},height:{ideal:1080}};
+  try{stream=await navigator.mediaDevices.getUserMedia({video:v,audio:true});}catch(e){stream=await navigator.mediaDevices.getUserMedia({video:v,audio:false});}
+  vid.srcObject=stream;await vid.play();src=vid;msg('');}
+ catch(e){msg('No se pudo abrir la cámara. Permite el acceso a cámara y micrófono; si la vista previa lo bloquea, abre la página en una pestaña propia. También puedes usar Editar foto con una imagen de tu galería.',true);}}
+$('bRetry').onclick=start;
+$('bFlip').onclick=()=>{facing=facing==='user'?'environment':'user';src=null;start();};
+$('bImp').onclick=()=>{if(src instanceof HTMLImageElement){src=vid.srcObject?vid:null;mode='photo';$('bImp').textContent='Editar foto';if(!src)start();}else $('file').click();};
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{src=im;mode='photo';setMode('photo');$('bImp').textContent='Volver a cámara';msg('');};im.src=URL.createObjectURL(f);e.target.value='';};
+function setMode(m){mode=m;$('mP').classList.toggle('on',m==='photo');$('mV').classList.toggle('on',m==='video');$('ctl').classList.toggle('vid',m==='video');}
+$('mP').onclick=()=>{if(!rec)setMode('photo');};
+$('mV').onclick=()=>{if(!rec&&!(src instanceof HTMLImageElement))setMode('video');};
+
+/* ---------- captura ---------- */
+let tI;
+$('bShot').onclick=()=>{if(!src)return;
+ if(mode==='photo'){const f=$('flash');f.style.transition='none';f.style.opacity=.8;requestAnimationFrame(()=>{f.style.transition='opacity .25s';f.style.opacity=0;});
+  out.toBlob(b=>add(b,'image'),'image/jpeg',.95);}
+ else if(rec){rec.stop();}
+ else{const cs=out.captureStream(30);stream&&stream.getAudioTracks().forEach(t=>cs.addTrack(t));
+  const mt=['video/mp4;codecs=avc1','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));
+  if(!mt){toast('Este navegador no permite grabar vídeo.');return;}
+  const ch=[];rec=new MediaRecorder(cs,{mimeType:mt,videoBitsPerSecond:8e6});
+  rec.ondataavailable=e=>e.data.size&&ch.push(e.data);
+  rec.onstop=()=>{clearInterval(tI);$('timer').style.display='none';$('ctl').classList.remove('rec');const r=rec;rec=null;add(new Blob(ch,{type:r.mimeType.split(';')[0]}),'video');};
+  rec.start(500);const t0=Date.now();$('timer').style.display='flex';$('ctl').classList.add('rec');
+  tI=setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);$('timer').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');},250);}};
+
+/* ---------- galería y guardado ---------- */
+let items=[],cur=null;
+const idb=new Promise(r=>{try{const q=indexedDB.open('retrocam',1);q.onupgradeneeded=()=>q.result.createObjectStore('m',{keyPath:'id'});q.onsuccess=()=>r(q.result);q.onerror=()=>r(null);}catch(e){r(null);}});
+async function store(fn){try{const d=await idb;if(d)fn(d.transaction('m','readwrite').objectStore('m'));}catch(e){}}
+function add(blob,type){const id=Date.now(),ext=type==='image'?'jpg':blob.type.includes('mp4')?'mp4':'webm';
+ const it={id,type,blob,name:`retrocam-${id}.${ext}`,url:URL.createObjectURL(blob)};items.unshift(it);
+ store(s=>s.put({id,type,blob,name:it.name}));thumb();toast(type==='image'?'Foto lista':'Vídeo listo',it);}
+function thumb(){const t=$('bGal'),i=items[0];t.innerHTML=i?(i.type==='image'?`<img src="${i.url}" alt="">`:`<video src="${i.url}#t=.1" muted playsinline></video>`):'';}
+let tt;function toast(t,it){$('toastT').textContent=t;$('toastB').style.display=it?'':'none';$('toastB').onclick=()=>{save(it);$('toast').classList.remove('show');};$('toast').classList.add('show');clearTimeout(tt);tt=setTimeout(()=>$('toast').classList.remove('show'),5000);}
+async function save(it){
+ try{const d=await window.claude?.use?.('downloads');if(d){await d.save({filename:it.name,data:it.blob});toast('Guardado');return;}}catch(e){if(e&&e.code==='declined')return;}
+ const f=new File([it.blob],it.name,{type:it.blob.type});
+ if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]});return;}catch(e){if(e.name==='AbortError')return;}}
+ const a=document.createElement('a');a.href=it.url;a.download=it.name;document.body.appendChild(a);a.click();a.remove();}
+async function share(it){const f=new File([it.blob],it.name,{type:it.blob.type});
+ try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else toast('Compartir no está disponible aquí; usa Guardar.');}catch(e){}}
+function openGal(){const g=$('grid');g.innerHTML='';if(!items.length)g.innerHTML='<div class="empty">Aún no hay fotos ni vídeos. Lo que captures aparecerá aquí.</div>';
+ items.forEach(it=>{const b=document.createElement('button');b.innerHTML=it.type==='image'?`<img src="${it.url}" alt="">`:`<video src="${it.url}#t=.1" muted playsinline></video><span>Vídeo</span>`;b.onclick=()=>openView(it);g.appendChild(b);});$('gal').classList.add('open');}
+function openView(it){cur=it;$('vm').innerHTML=it.type==='image'?`<img src="${it.url}" alt="">`:`<video src="${it.url}" controls playsinline autoplay></video>`;$('view').classList.add('open');}
+$('bGal').onclick=openGal;$('bGalX').onclick=()=>$('gal').classList.remove('open');
+$('vX').onclick=()=>{$('view').classList.remove('open');$('vm').innerHTML='';};
+$('vSave').onclick=()=>save(cur);$('vShare').onclick=()=>share(cur);
+$('vDel').onclick=()=>{const i=cur;items=items.filter(q=>q!==i);store(s=>s.delete(i.id));$('vX').onclick();thumb();openGal();};
+(async()=>{try{const d=await idb;if(!d)return;const q=d.transaction('m').objectStore('m').getAll();q.onsuccess=()=>{items=q.result.sort((a,b)=>b.id-a.id).map(r=>({...r,url:URL.createObjectURL(r.blob)}));thumb();};}catch(e){}})();
+
+/* ---------- cámaras personalizadas / abiertas ---------- */
+const DEF={con:1,sat:1};
+const toObj=p=>{const o={name:p[0],sub:p[1],st:p[2][12]};K.forEach((k,j)=>o[k]=p[2][j]);return o;};
+function addCamera(name,sub,o){o=o||{};const a=K.map(k=>{let n=+(o[k]??DEF[k]??0);if(!isFinite(n))n=DEF[k]??0;return Math.min(L[k][2],Math.max(L[k][1],n));});a.push([0,1,2].includes(+o.st)?+o.st:0);P.push([String(name).slice(0,24),String(sub||'Personalizada').slice(0,24),a]);addBtn(P[P.length-1],P.length-1);return P.length-1;}
+const saveCustom=()=>{try{localStorage.setItem('retrocam-custom',JSON.stringify(P.slice(NB).map(toObj)));}catch(e){}};
+try{JSON.parse(localStorage.getItem('retrocam-custom')||'[]').forEach(o=>o&&o.name&&addCamera(o.name,o.sub,o));}catch(e){}
+window.Retrocam={addCamera:(n,s,o)=>{const i=addCamera(n,s,o);saveCustom();return i;},cameras:()=>P.map(toObj)};
+$('bSaveCam').onclick=()=>{const n=$('cname').value.trim();if(!n){toast('Escribe un nombre para la cámara.');return;}const o={};K.forEach(k=>o[k]=vals[k]);o.st=st;const i=addCamera(n,'Personalizada',o);saveCustom();$('cname').value='';setPreset(i);$('strip').lastChild.scrollIntoView({inline:'center',block:'nearest'});toast('Cámara añadida: '+n);};
+$('bDelCam').onclick=()=>{if(pi<NB){toast('Solo puedes eliminar cámaras que hayas añadido.');return;}P.splice(pi,1);saveCustom();$('strip').innerHTML='';P.forEach(addBtn);setPreset(1);toast('Cámara eliminada');};
+$('bExpCam').onclick=async()=>{const c=P.length>NB?P.slice(NB):[P[pi]],s=JSON.stringify(c.map(toObj),null,2);
+ try{const d=await window.claude?.use?.('downloads');if(d){await d.save({filename:'retrocam-camaras.json',data:s});return;}}catch(e){if(e&&e.code==='declined')return;}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'application/json'}));a.download='retrocam-camaras.json';document.body.appendChild(a);a.click();a.remove();};
+$('bImpCam').onclick=()=>$('jfile').click();
+$('jfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{let j=JSON.parse(await f.text());if(!Array.isArray(j))j=[j];const ok=j.filter(o=>o&&typeof o.name==='string'&&o.name.trim());ok.forEach(o=>addCamera(o.name.trim(),o.sub,o));saveCustom();toast(ok.length?`${ok.length} cámara(s) añadida(s)`:'El archivo no contiene cámaras válidas.');}catch(err){toast('No se pudo leer el archivo JSON.');}};
+
+setPreset(1);requestAnimationFrame(frame);start();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script></body></html>
